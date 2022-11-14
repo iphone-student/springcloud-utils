@@ -1,6 +1,5 @@
 package com.dahua.Util;
 
-import com.dahua.domain.ObjectItem;
 import io.minio.*;
 import io.minio.messages.DeleteError;
 import io.minio.messages.DeleteObject;
