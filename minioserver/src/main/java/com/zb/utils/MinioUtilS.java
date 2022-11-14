@@ -1,14 +1,29 @@
-package com.zb.utils;
+package com.dahua.Util;
 
+import com.dahua.domain.ObjectItem;
 import io.minio.*;
 import io.minio.messages.DeleteError;
+import io.minio.messages.DeleteObject;
+import io.minio.messages.Item;
+import org.apache.commons.compress.utils.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @description： minio工具类
@@ -70,40 +85,7 @@ public class MinioUtilS {
         }
         return true;
     }
-    /**
-     * description: 上传文件对象
-     * @param multipartFile
-     * @return: java.lang.String
 
-     */
-    public List<String> uploadObject(MultipartFile[] multipartFile) {
-        List<String> names = new ArrayList<>(multipartFile.length);
-        for (MultipartFile file : multipartFile) {
-            String fileName = file.getOriginalFilename();
-            String[] split = fileName.split("\\.");
-            String fileNameAlias;
-            if (split.length > 1) {
-                fileNameAlias = split[0] + "_" + System.currentTimeMillis() + "." + split[1];
-            } else {
-                fileNameAlias = fileName + System.currentTimeMillis();
-            }
-            try {
-                minioClient.uploadObject(
-                        UploadObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(fileNameAlias)
-                                .filename(file.getName())
-                                .contentType(file.getContentType())
-                                .build());
-                );
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            names.add(fileNameAlias);
-        }
-        return names;
-    }
     /**
      * description: 上传文件
      *
@@ -126,7 +108,7 @@ public class MinioUtilS {
                 in = file.getInputStream();
                 minioClient.putObject(PutObjectArgs.builder()
                         .bucket(bucketName)
-                        .object(fileName)
+                        .object("list\\"+fileName)
                         .stream(in, in.available(), -1)
                         .contentType(file.getContentType())
                         .build()
@@ -217,7 +199,44 @@ public class MinioUtilS {
         }
         return objectItems;
     }
+    /**
+     * 递归查看文件夹中对象
+     * 查询结果只有一个2020/06/01文件夹
+     * 传2020/06/01/，查询结果才是这个文件夹中的内容
+     * @param bucketName 存储bucket名称
+     * @return 存储bucket内文件对象信息
+     */
+    public List<ObjectItem> listObjects1(String bucketName, String path, Boolean onlyDir) {
+        Iterable<Result<Item>> results = minioClient.listObjects(
+                ListObjectsArgs.builder()
+                        .bucket(bucketName)
+                        .prefix(path)
+                        .recursive(false)
+                        .build());
+        List<ObjectItem> objectItems = new ArrayList<>();
+        try {
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                if (onlyDir && !item.isDir()) {
+                    continue;
+                }
+                if (!onlyDir && item.isDir()) {
+                    continue;
+                }
+                ObjectItem objectItem = new ObjectItem();
 
+                String[] paths = item.objectName().split("/");
+
+                objectItem.setObjectName(paths[paths.length - 1]);
+                objectItem.setSize(item.size());
+                objectItems.add(objectItem);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return objectItems;
+    }
     /**
      * 批量删除文件对象
      * @param bucketName 存储bucket名称
