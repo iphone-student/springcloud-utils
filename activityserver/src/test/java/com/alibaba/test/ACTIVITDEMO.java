@@ -10,12 +10,13 @@ import org.activiti.engine.runtime.ProcessInstance;
 import org.activiti.engine.task.Task;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.*;
 import java.util.List;
 import java.util.zip.ZipInputStream;
 
-
+@SpringBootTest
 public class ACTIVITDEMO {
     /**
     * @Author: zb
